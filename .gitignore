@@ -1,0 +1,7 @@
+# Python files
+*.pyc
+*__pycache__*
+.pytest_cache
+
+# Pycharm
+*.idea
