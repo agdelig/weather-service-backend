@@ -1,6 +1,7 @@
 from flask import Flask
 from config import Config
-
+from werkzeug.contrib.cache import SimpleCache
+cache = SimpleCache()
 
 def create_app():
     app = Flask(__name__)

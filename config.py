@@ -1,4 +1,7 @@
+import os
+
+
 class Config:
 
-    dr = 'kl'
+    app_id = os.getenv('APPID')
 
