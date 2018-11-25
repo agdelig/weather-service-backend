@@ -3,6 +3,7 @@ from config import Config
 from werkzeug.contrib.cache import SimpleCache
 cache = SimpleCache()
 
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
