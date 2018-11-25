@@ -12,17 +12,19 @@ with open("./weather/resources/city_list.json", "r") as read_file:
 
 
 @forecast_blueprint.route('/<city>')
+@forecast_blueprint.route('/<city>/')
 def city_weather(city):
-    c_c =city_name_to_code(city)
+    c_c = city_name_to_code(city)
 
     return jsonify(current_weather(c_c, request.args))
 
-
+'''
 @forecast_blueprint.route('/<city>/')
 def city_forecast_with_params(city):
     a = request.args
 
     return jsonify(a)
+'''
 
 
 def current_weather(city, params=None):
@@ -32,13 +34,13 @@ def current_weather(city, params=None):
     forecast_type = 'weather'
 
     if params.get('at') is not None:
-        forecast_type = 'forecast'
+        forecast_type = 'forecast/daily'
 
     if params.get('units') is not None:
         units_param = f'&units={params.get("units")}'
 
     url = f'http://api.openweathermap.org/data/2.5/{forecast_type}' \
-          f'?id={city}&appid={id}&mode=xml{units_param}'
+          f'?lat={city.get("coord").get("lat")}&lon={city.get("coord").get("lon")}&appid={id}&mode=xml{units_param}'
 
     print(url)
 
@@ -87,5 +89,5 @@ def city_name_to_code(city):
     if len(city_entry) == 0:
         raise Exception
     else:
-        return city_entry[0].get('id')
+        return city_entry[0]
 
