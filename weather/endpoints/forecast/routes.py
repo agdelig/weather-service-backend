@@ -2,15 +2,20 @@ import requests as req, os
 from flask import Blueprint, jsonify, request, abort
 from weather import cache
 import xml.etree.ElementTree as ET
+import json
 
 
 forecast_blueprint = Blueprint('forecast', __name__)
 
+with open("./weather/resources/city_list.json", "r") as read_file:
+    city_codes = json.load(read_file)
+
 
 @forecast_blueprint.route('/<city>')
 def city_weather(city):
+    c_c =city_name_to_code(city)
 
-    return jsonify(current_weather(city, request.args))
+    return jsonify(current_weather(c_c, request.args))
 
 
 @forecast_blueprint.route('/<city>/')
@@ -21,6 +26,7 @@ def city_forecast_with_params(city):
 
 
 def current_weather(city, params=None):
+    print(city)
     id = os.getenv("APPID")
     units_param = ''
     forecast_type = 'weather'
@@ -32,7 +38,9 @@ def current_weather(city, params=None):
         units_param = f'&units={params.get("units")}'
 
     url = f'http://api.openweathermap.org/data/2.5/{forecast_type}' \
-          f'?q={city},uk&appid={id}&mode=xml{units_param}'
+          f'?id={city}&appid={id}&mode=xml{units_param}'
+
+    print(url)
 
     xml_content = consume_weather_api(url)
 
@@ -71,4 +79,13 @@ def create_responce(xml_content):
     }
 
     return response
+
+
+def city_name_to_code(city):
+    city_entry = list(filter(lambda c: c['name'] == city, city_codes))
+
+    if len(city_entry) == 0:
+        raise Exception
+    else:
+        return city_entry[0].get('id')
 
