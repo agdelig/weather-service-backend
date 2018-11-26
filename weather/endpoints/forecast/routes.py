@@ -12,9 +12,12 @@ with open("./weather/resources/city_list.json", "r") as read_file:
 
 
 @forecast_blueprint.route('/<city>')
-@forecast_blueprint.route('/<city>/')
+#@forecast_blueprint.route('/<city>/')
 def city_weather(city):
-    c_c = city_name_to_code(city)
+    try:
+        c_c = city_name_to_code(city)
+    except Exception:
+        abort(404)
 
     return jsonify(current_weather(c_c, request.args))
 
