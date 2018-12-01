@@ -1,10 +1,11 @@
 import requests as req, os
 from flask import Blueprint, jsonify, request, abort
 from weather import cache
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as XMLElements
 from datetime import datetime, timedelta
-import json, iso8601, pytz
+import json,iso8601, pytz
 from urllib.parse import splitquery, quote_plus,  urlparse, parse_qs
+from tzwhere import tzwhere
 
 base_api_url = 'http://api.openweathermap.org/data/2.5/'
 api_id = os.getenv("APPID")
@@ -13,30 +14,6 @@ forecast_blueprint = Blueprint('forecast', __name__)
 
 with open("./weather/resources/city_list.json", "r") as read_file:
     city_codes = json.load(read_file)
-
-
-@forecast_blueprint.route('/parse')
-def parse_time():
-    url = request.url
-    print(request.url_charset)
-    print(splitquery(url))
-    base_url = request.base_url
-    decode = url
-    parsed_url = urlparse(decode)
-    q = parse_qs(parsed_url.query.replace('+', '%2B'), encoding='utf-8')
-    print(quote_plus(parsed_url.query))
-    print(q)
-
-    t = q.get('at')
-    print(f'{decode} --------------------- {t}')
-    dt = iso8601.parse_date('2018-10-14T14:34:40-0100')
-    d = iso8601.parse_date(t[0])
-
-    if dt == d:
-        return'true'
-    else:
-        return 'false'
-    #return f'{dt:%B %d, %Y}'
 
 
 def parse_date(url):
@@ -55,11 +32,10 @@ def parse_date(url):
     elif requested_date < now_utc:
         return 'are you nuts?'
     else:
-        return'OK'
+        return requested_date
 
 
-
-#@forecast_blueprint.route('/<city>')
+@forecast_blueprint.route('/<city>')
 @forecast_blueprint.route('/<city>/')
 def city_weather(city):
     #try:
@@ -75,17 +51,21 @@ def create_response(c_c):
         units_param = f'&units={request.args.get("units")}'
 
     if request.args.get('at') is not None:
-        return specific_date_forecast(c_c, units_param)
+        return specific_date_forecast(c_c[0], units_param)
     else:
-        r = []
-        for city in c_c:
-            r.append(current_weather(city, units_param))
-            return r
+        return current_weather(c_c[0], units_param)
+
+
+def find_timezone(lat, lon):
+    print(lat, lon)
+    tz_str = tzwhere.tzwhere().tzNameAt(float(lat), float(lon))
+
+    return tz_str
 
 
 def specific_date_forecast(city, units_param):
     url = f'{base_api_url}forecast' \
-          f'?id={city[0].get("id")}&appid={api_id}&mode=xml{units_param}'
+          f'?id={city.get("id")}&appid={api_id}&mode=xml{units_param}'
 
     xml_content = consume_weather_api(url)
 
@@ -93,13 +73,20 @@ def specific_date_forecast(city, units_param):
     #try:
     date = parse_date(url=request.url)
     forecast = xml_content.find('forecast')
+    location_element = xml_content.find('location').find('location')
 
-    r = []
+    tz_name = find_timezone(location_element.get('latitude'), location_element.get('longitude'))
+    city_tz = pytz.timezone(tz_name)
+
     for child in forecast:
-        r.append(create_response_from_xml(child))
+        min_timeframe = iso8601.parse_date(child.get('from'), city_tz)
+        max_timeframe = iso8601.parse_date(child.get('to'), city_tz)
+        print(max_timeframe)
+
+        if min_timeframe <= date < max_timeframe:
+            return create_response_from_xml(child)
     #except Exception:
         #abort(403)
-    return r
 
 
 def current_weather(city, units_param):
@@ -124,7 +111,7 @@ def consume_weather_api(url):
         request_content = weather_request.content
         cache.set(url, request_content, timeout=600)
 
-    e_tree = ET.fromstring(request_content)
+    e_tree = XMLElements.fromstring(request_content)
 
     return e_tree
 
