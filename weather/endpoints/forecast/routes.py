@@ -2,14 +2,18 @@ import requests as req, os
 from flask import Blueprint, jsonify, request, abort
 from weather import cache
 import xml.etree.ElementTree as ET
-import json, iso8601
-from urllib.parse import splitquery, urlencode, quote_plus, unquote_plus, urlparse, parse_qs
+from datetime import datetime, timedelta
+import json, iso8601, pytz
+from urllib.parse import splitquery, quote_plus,  urlparse, parse_qs
 
+base_api_url = 'http://api.openweathermap.org/data/2.5/'
+api_id = os.getenv("APPID")
 
 forecast_blueprint = Blueprint('forecast', __name__)
 
 with open("./weather/resources/city_list.json", "r") as read_file:
     city_codes = json.load(read_file)
+
 
 @forecast_blueprint.route('/parse')
 def parse_time():
@@ -35,45 +39,76 @@ def parse_time():
     #return f'{dt:%B %d, %Y}'
 
 
-@forecast_blueprint.route('/<city>')
-#@forecast_blueprint.route('/<city>/')
-def city_weather(city):
+def parse_date(url):
+    parsed_url = urlparse(url)
+    query_params = parse_qs(parsed_url.query.replace('+', '%2B'), encoding='utf-8')
+    date_param = query_params.get('at')
     try:
-        c_c = city_name_to_code(city)
+        requested_date = iso8601.parse_date(date_param[0])
     except Exception:
-        abort(404)
+        return 'nope'
 
-    return jsonify(current_weather(c_c, request.args))
+    now_utc = pytz.utc.localize(datetime.utcnow())
 
-'''
+    if requested_date > now_utc + timedelta(days=5):
+        return 'tooooooooooooooooooo much'
+    elif requested_date < now_utc:
+        return 'are you nuts?'
+    else:
+        return'OK'
+
+
+
+#@forecast_blueprint.route('/<city>')
 @forecast_blueprint.route('/<city>/')
-def city_forecast_with_params(city):
-    a = request.args
+def city_weather(city):
+    #try:
+    cities_list = city_name_to_code(city)
+    return jsonify(create_response(cities_list))
+    #except Exception:
+        #abort(403)
 
-    return jsonify(a)
-'''
 
-
-def current_weather(city, params=None):
-    print(city)
-    id = os.getenv("APPID")
+def create_response(c_c):
     units_param = ''
-    forecast_type = 'weather'
+    if request.args.get('units') is not None:
+        units_param = f'&units={request.args.get("units")}'
 
-    if params.get('at') is not None:
-        forecast_type = 'forecast/daily'
+    if request.args.get('at') is not None:
+        return specific_date_forecast(c_c, units_param)
+    else:
+        r = []
+        for city in c_c:
+            r.append(current_weather(city, units_param))
+            return r
 
-    if params.get('units') is not None:
-        units_param = f'&units={params.get("units")}'
 
-    url = f'http://api.openweathermap.org/data/2.5/{forecast_type}' \
-          f'?lat={city.get("coord").get("lat")}&lon={city.get("coord").get("lon")}&appid={id}&mode=xml{units_param}'
-
-    print(url)
+def specific_date_forecast(city, units_param):
+    url = f'{base_api_url}forecast' \
+          f'?id={city[0].get("id")}&appid={api_id}&mode=xml{units_param}'
 
     xml_content = consume_weather_api(url)
 
-    return create_responce(xml_content)
+
+    #try:
+    date = parse_date(url=request.url)
+    forecast = xml_content.find('forecast')
+
+    r = []
+    for child in forecast:
+        r.append(create_response_from_xml(child))
+    #except Exception:
+        #abort(403)
+    return r
+
+
+def current_weather(city, units_param):
+    url = f'{base_api_url}weather' \
+          f'?id={city.get("id")}&appid={api_id}&mode=xml{units_param}'
+
+    xml_content = consume_weather_api(url)
+
+    return create_response_from_xml(xml_content)
 
 
 def consume_weather_api(url):
@@ -94,7 +129,7 @@ def consume_weather_api(url):
     return e_tree
 
 
-def create_responce(xml_content):
+def create_response_from_xml(xml_content):
     clouds = xml_content.find('clouds')
     humidity = xml_content.find('humidity')
     pressure = xml_content.find('pressure')
@@ -115,6 +150,6 @@ def city_name_to_code(city):
 
     if len(city_entry) == 0:
         raise Exception
-    else:
-        return city_entry[0]
+
+    return city_entry
 
