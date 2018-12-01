@@ -38,11 +38,11 @@ def parse_date(url):
 @forecast_blueprint.route('/<city>')
 @forecast_blueprint.route('/<city>/')
 def city_weather(city):
-    #try:
-    cities_list = city_name_to_code(city)
-    return jsonify(create_response(cities_list))
-    #except Exception:
-        #abort(403)
+    try:
+        cities_list = city_name_to_code(city)
+        return jsonify(create_response(cities_list))
+    except Exception:
+        abort(404)
 
 
 def create_response(c_c):
@@ -70,23 +70,23 @@ def specific_date_forecast(city, units_param):
     xml_content = consume_weather_api(url)
 
 
-    #try:
-    date = parse_date(url=request.url)
-    forecast = xml_content.find('forecast')
-    location_element = xml_content.find('location').find('location')
+    try:
+        date = parse_date(url=request.url)
+        forecast = xml_content.find('forecast')
+        location_element = xml_content.find('location').find('location')
 
-    tz_name = find_timezone(location_element.get('latitude'), location_element.get('longitude'))
-    city_tz = pytz.timezone(tz_name)
+        tz_name = find_timezone(location_element.get('latitude'), location_element.get('longitude'))
+        city_tz = pytz.timezone(tz_name)
 
-    for child in forecast:
-        min_timeframe = iso8601.parse_date(child.get('from'), city_tz)
-        max_timeframe = iso8601.parse_date(child.get('to'), city_tz)
-        print(max_timeframe)
+        for child in forecast:
+            min_timeframe = iso8601.parse_date(child.get('from'), city_tz)
+            max_timeframe = iso8601.parse_date(child.get('to'), city_tz)
+            print(max_timeframe)
 
-        if min_timeframe <= date < max_timeframe:
-            return create_response_from_xml(child)
-    #except Exception:
-        #abort(403)
+            if min_timeframe <= date < max_timeframe:
+                return create_response_from_xml(child)
+    except Exception:
+        abort(403)
 
 
 def current_weather(city, units_param):

@@ -12,12 +12,12 @@ class RouteTest(unittest.TestCase):
         assert rv.status == '200 OK'
 
     def test_forecast_Leeds_200(self):
-        rv = self.app.get('/forecast/Leeds')
+        rv = self.app.get('/forecast/Leeds/')
         print(rv)
         assert rv.status == '200 OK'
 
-    def test_forecast_InvalidCityName_200(self):
-        rv = self.app.get('/forecast/InvalidCityName')
+    def test_forecast_InvalidCityName_404(self):
+        rv = self.app.get('/forecast/InvalidCityName/')
         print(rv)
         assert rv.status_code == 404
 
