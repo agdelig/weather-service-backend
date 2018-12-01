@@ -2,13 +2,37 @@ import requests as req, os
 from flask import Blueprint, jsonify, request, abort
 from weather import cache
 import xml.etree.ElementTree as ET
-import json
+import json, iso8601
+from urllib.parse import splitquery, urlencode, quote_plus, unquote_plus, urlparse, parse_qs
 
 
 forecast_blueprint = Blueprint('forecast', __name__)
 
 with open("./weather/resources/city_list.json", "r") as read_file:
     city_codes = json.load(read_file)
+
+@forecast_blueprint.route('/parse')
+def parse_time():
+    url = request.url
+    print(request.url_charset)
+    print(splitquery(url))
+    base_url = request.base_url
+    decode = url
+    parsed_url = urlparse(decode)
+    q = parse_qs(parsed_url.query.replace('+', '%2B'), encoding='utf-8')
+    print(quote_plus(parsed_url.query))
+    print(q)
+
+    t = q.get('at')
+    print(f'{decode} --------------------- {t}')
+    dt = iso8601.parse_date('2018-10-14T14:34:40-0100')
+    d = iso8601.parse_date(t[0])
+
+    if dt == d:
+        return'true'
+    else:
+        return 'false'
+    #return f'{dt:%B %d, %Y}'
 
 
 @forecast_blueprint.route('/<city>')
