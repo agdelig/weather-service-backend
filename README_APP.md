@@ -18,5 +18,5 @@ export ENV=<DEV or PROD>
 
 Run the container
 ```buildoutcfg
-docker run -e APPID=$APPID -p 5000:5000 <tag_name>
+docker run -e APPID=$APPID -p 8080:8080 <tag_name>
 ```
