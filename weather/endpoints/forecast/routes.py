@@ -73,8 +73,6 @@ def specific_date_forecast(city, units_param):
 
     xml_content = consume_weather_api(url)
 
-
-    #try:
     date = parse_date(url=request.url)
     forecast = xml_content.find('forecast')
     location_element = xml_content.find('location').find('location')
@@ -88,8 +86,6 @@ def specific_date_forecast(city, units_param):
 
         if min_timeframe <= date < max_timeframe:
             return create_response_from_xml(child)
-    #except Exception:
-        #abort(403)
 
 
 def current_weather(city, units_param):

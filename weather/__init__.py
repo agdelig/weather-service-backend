@@ -1,12 +1,15 @@
 from flask import Flask
-from weather.config import Config
+import weather.config as con
+import os
 from werkzeug.contrib.cache import SimpleCache
 cache = SimpleCache()
 
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(Config)
+    configuration = con.configurations[os.getenv('ENV', 'DEV')]
+    print(f'Running on {configuration.name}')
+    app.config.from_object(configuration.path)
 
     from weather.endpoints.ping.routes import ping_blueprint
     from weather.endpoints.forecast.routes import forecast_blueprint
