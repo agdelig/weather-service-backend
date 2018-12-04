@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, render_template, abort
 ping_blueprint = Blueprint('ping', __name__)
 
 
+@ping_blueprint.route('/')
 @ping_blueprint.route('')
 def ping():
     with open('./VERSION', 'r') as file:

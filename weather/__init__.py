@@ -13,9 +13,11 @@ def create_app():
 
     from weather.endpoints.ping.routes import ping_blueprint
     from weather.endpoints.forecast.routes import forecast_blueprint
+    from weather.errors.handlers import errors
 
     app.register_blueprint(ping_blueprint, url_prefix='/ping')
     app.register_blueprint(forecast_blueprint, url_prefix='/forecast')
+    app.register_blueprint(errors)
 
     return app
 

@@ -13,8 +13,11 @@ api_id = os.getenv("APPID")
 
 forecast_blueprint = Blueprint('forecast', __name__)
 
-with open("./weather/resources/city_list.json", "r") as read_file:
-    city_codes = json.load(read_file)
+try:
+    with open("./weather/resources/city_list.json", "r") as read_file:
+        city_codes = json.load(read_file)
+except FileNotFoundError:
+    city_codes = None
 
 
 def parse_date(url):
@@ -24,28 +27,29 @@ def parse_date(url):
     try:
         requested_date = iso8601.parse_date(date_param[0])
     except Exception:
-        raise custom_exceptions.DateException
+        raise custom_exceptions.DateException('Invalid date format!')
 
     now_utc = pytz.utc.localize(datetime.utcnow())
 
     if requested_date > now_utc + timedelta(days=5):
-        raise custom_exceptions.DateException#return 'tooooooooooooooooooo much'
+        raise custom_exceptions.DateException('Maximum forecast can be 5 days in the future!')
+        #return 'tooooooooooooooooooo much'
     elif requested_date < now_utc:
-        raise custom_exceptions.DateException#return 'are you nuts?'
+        raise custom_exceptions.DateException('Date in the past!')#return 'are you nuts?'
     else:
         return requested_date
 
 
-@forecast_blueprint.route('/<city>')
 @forecast_blueprint.route('/<city>/')
+@forecast_blueprint.route('/<city>')
 def city_weather(city):
     try:
         cities_list = city_name_to_code(city)
         return jsonify(create_response(cities_list))
-    except custom_exceptions.InvalidCityException:
-        abort(404)
-    except custom_exceptions.DateException:
-        abort(400)
+    except custom_exceptions.InvalidCityException as err:
+        abort(404, {'message': err.args[0]})
+    except custom_exceptions.DateException as err:
+        abort(400, {'message': err.args[0]})
     except custom_exceptions.ServerException:
         abort(500)
 
@@ -134,10 +138,13 @@ def create_response_from_xml(xml_content):
 
 
 def city_name_to_code(city):
+    if city_codes is None:
+        raise custom_exceptions.ServerException
+
     city_entry = list(filter(lambda c: c['name'] == city, city_codes))
 
     if len(city_entry) == 0:
-        raise custom_exceptions.InvalidCityException
+        raise custom_exceptions.InvalidCityException(f"Cannot find city '{city}'")
 
     return city_entry
 
