@@ -1,6 +1,6 @@
 import requests as req, os
 from flask import Blueprint, jsonify, request, abort
-from weather import cache
+from weather import cache, logger
 from weather.endpoints.common import custom_exceptions
 import xml.etree.ElementTree as XMLElements
 from datetime import datetime, timedelta
@@ -18,6 +18,7 @@ try:
     with open("./weather/resources/city_list.json", "r") as read_file:
         city_codes = json.load(read_file)
 except FileNotFoundError:
+    logger.critical('File "./weather/resources/city_list.json" not found!')
     city_codes = None
 
 
@@ -32,17 +33,21 @@ def parse_date(url):
     :param url:
     :return: datetime object
     """
+    logger.info(f'Parsing "{url}"...')
     parsed_url = urlparse(url)
     # Change '+' sign to '%2B' unicode encoded
     query_params = parse_qs(parsed_url.query.replace('+', '%2B'), encoding='utf-8')
 
     # Get 'at' query parameter
     date_param = query_params.get('at')
+    logger.debug(f'Date "{date_param}')
 
     # Parse 'at' parameter to datetime based on ISO8601 format. Raise DateException if unsuccesful.
     try:
         requested_date = iso8601.parse_date(date_param[0])
+        logger.info(f'Date parsed "{requested_date}"')
     except Exception:
+        logger.error('Unparsable date!')
         raise custom_exceptions.DateException('Invalid date format!')
 
     # Create curent time datetime object
@@ -50,10 +55,13 @@ def parse_date(url):
 
     # Chech if requested time is valid. Raise DateException if not.
     if requested_date > now_utc + timedelta(days=5):
+        logger.error(f'Requested date "{requested_date}" exceeding 5 day limit!')
         raise custom_exceptions.DateException('Maximum forecast can be 5 days in the future!')
     elif requested_date < now_utc:
+        logger.error(f'Date "{requested_date}" is in the past!')
         raise custom_exceptions.DateException('Date in the past!')
     else:
+        logger.debug(f'Date "{requested_date}" is valid.')
         return requested_date
 
 
@@ -72,15 +80,20 @@ def city_weather(city):
     :return: json Object
     """
     try:
+        logger.info(f'Forecast request for "{city}"')
         cities_list = city_name_to_code(city)
 
+        logger.info(f'Response for "{city}".')
         # if more than one city have the same name the first one will be used.
         return jsonify(create_response(cities_list[0]))
     except custom_exceptions.InvalidCityException as err:
+        logger.error(err.args[0])
         abort(404, {'message': err.args[0]})
     except custom_exceptions.DateException as err:
+        logger.error(err.args[0])
         abort(400, {'message': err.args[0]})
-    except custom_exceptions.ServerException:
+    except custom_exceptions.ServerException as err:
+        logger.error(err.args[0])
         abort(500)
 
 
@@ -93,13 +106,18 @@ def create_response(city):
     """
     units_param = ''
     # Check whether unit param exists.
+    logger.debug('Checking for "units" param.')
     if request.args.get('units') is not None:
         units_param = f'&units={request.args.get("units")}'
+        logger.debug(f'Units = {units_param}')
 
     # Check whether curent weather or forecast for specific day has been requested.
+    logger.debug('Checking for "at" param.')
     if request.args.get('at') is not None:
+        logger.debug(f'Param at = {request.args.get("at")}.')
         return specific_date_forecast(city, units_param)
     else:
+        logger.debug('No "at" param.')
         return current_weather(city, units_param)
 
 
@@ -112,6 +130,7 @@ def find_timezone(lat, lon):
     :return: timezone_string
     """
     tz_str = tzwhere.tzwhere().tzNameAt(float(lat), float(lon))
+    logger.debug(f'lat: "{lat}" | lon: "{lon}" | timezone: "{tz_str}"')
 
     return tz_str
 
@@ -149,6 +168,7 @@ def specific_date_forecast(city, units_param):
 
         # Return data once time  falls in element's time window
         if min_timeframe <= date < max_timeframe:
+            logger.debug(f'Requsted time {date} found in time window {min_timeframe} - {max_timeframe}')
             return create_response_from_xml(child)
 
 
@@ -184,20 +204,22 @@ def consume_weather_api(url):
     # Check if responce has been cached.
     request_content = cache.get(url)
 
-    # If response has not been hashed make a request to the API.
+    # If response has not been cashed make a request to the API.
     if request_content is None:
 
         try:
+            logger.debug(f'Request "{url}".')
             weather_request = req.get(url)
         except Exception:
-            raise custom_exceptions.ServerException
+            raise custom_exceptions.ServerException(f'Error while requesting "{url}"')
 
         if weather_request.status_code is not 200:
-            raise custom_exceptions.ServerException
+            raise custom_exceptions.ServerException(f'Requst to "{url}" returned with {weather_request.status_code}!')
 
         request_content = weather_request.content
 
         # Cache content for 10 min
+        logger.debug(f'Caching "{url}"!')
         cache.set(url, request_content, timeout=600)
 
     e_tree = XMLElements.fromstring(request_content)
@@ -212,6 +234,7 @@ def create_response_from_xml(xml_content):
     :param xml_content:
     :return: dict
     """
+    logger.debug('Parsing XML.')
     clouds = xml_content.find('clouds')
     humidity = xml_content.find('humidity')
     pressure = xml_content.find('pressure')
@@ -236,8 +259,9 @@ def city_name_to_code(city):
     :return: list
     """
     if city_codes is None:
-        raise custom_exceptions.ServerException
+        raise custom_exceptions.ServerException('city_codes is None!')
 
+    logger.debug(f'Searching city id for "{city}".')
     city_entry = list(filter(lambda c: c['name'] == city, city_codes))
 
     if len(city_entry) == 0:

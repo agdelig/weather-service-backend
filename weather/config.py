@@ -1,4 +1,4 @@
-import os
+import os, logging
 
 
 class Config(object):
@@ -11,6 +11,7 @@ class DevConfig(Config):
     name = 'DEVELOPMENT'
     DEBUG = True
     TESTING = True
+    LOGGING_LEVEL = logging.DEBUG
 
 
 class ProdConfig(Config):
@@ -18,6 +19,7 @@ class ProdConfig(Config):
     name = 'PRODUCTION'
     DEBUG = False
     TESTING = False
+    LOGGING_LEVEL = logging.WARNING
 
 
 configurations = {
