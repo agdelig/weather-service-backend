@@ -58,7 +58,7 @@ export ENV=<DEV or PROD>
 
 Run the container
 ```buildoutcfg
-docker run -e APPID=$APPID -e ENV=$ENV -p 8080:8080 <tag_name>
+docker run -d -e APPID=$APPID -p 8080:8080 --name <container_name> <tag_name>
 ```
 
 ## Routes  
