@@ -6,6 +6,8 @@ Data can be returned in metric or imperial units as well as temperatures in Kelv
  * Python v3.7.1
  * Docker (optional) I used version 18.09.0
 ## Assumptions  
+ * Validity of API responses (XML validity, response following API spec, etc) is taken  
+ for granted and is not checked.
  * Maximum forecast in the future can be 5 days in advance  
  * If only day is used with no time data returned will be that of the  
  first time window provided by openwaethermap API  
@@ -169,5 +171,6 @@ Date: Tue, 04 Dec 2018 10:37:02 GMT
 ## Tests  
 A test script is provided testing the routes and their responce codes. 
 ```buildoutcfg
-python test.py
+python route_test.py
+python function_test.py
 ```

@@ -36,7 +36,7 @@ def parse_date(url):
     # Change '+' sign to '%2B' unicode encoded
     query_params = parse_qs(parsed_url.query.replace('+', '%2B'), encoding='utf-8')
 
-    # Gwet 'at' query parameter
+    # Get 'at' query parameter
     date_param = query_params.get('at')
 
     # Parse 'at' parameter to datetime based on ISO8601 format. Raise DateException if unsuccesful.
