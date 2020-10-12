@@ -1,185 +1,176 @@
-Weather service
-===============
+## Overview  
+The "weather" app is a flask web service returning current weather and forecast  
+weather data from [https://openweathermap.org/](https://openweathermap.org/).  
+Data can be returned in metric or imperial units as well as temperatures in Kelvin.
+## Requirements  
+ * Python v3.7.1
+ * Docker (optional) I used version 18.09.0
+## Assumptions  
+ * Validity of API responses (XML validity, response following API spec, etc) is taken  
+ for granted and is not checked.
+ * Maximum forecast in the future can be 5 days in advance  
+ * If only day is used with no time data returned will be that of the  
+ first time window provided by openwaethermap API  
+ * City names must be present in the json file provided by openweathermap  
+ [here](http://bulk.openweathermap.org/sample/).  
+ * City name must be in the same format as in this json (upper and lower case letters)  
+ * Uniqueness cannot be guaranteed just by the city name. In case multiples entries are  
+ present the first city encountered will be used.
+## Running through terminal  
+Install python requirements  
+```buildoutcfg
+pip install -r requirements.txt
+```
+APPID provided by openweather.
+```buildoutcfg
+export APPID=<appid_provided_by_openweather>
+```
+One could also configure the environment the app is deployed on. there are two enviroment configurations.  
+ * DEV (Debug mode turned on)
+ * PROD
+```buildoutcfg
+export ENV=<DEV or PROD>
+```
+Run the app
+```buildoutcfg
+python run.py
+```
 
-This is the test for backend developers.
+Note: in case of multiple python interpreters are installed, make sure  
+the app is run with Python v.3.7
+## Running with Docker  
+First build the container and tag it appropriately.  
+```buildoutcfg
+docker build -t <tag_name> .
+```
 
-Take as long as you need or you think is reasonable. You don't need to
-complete all the requirements if you are pushed for time, however your
-solution should give us enough code to confirm that you are competent
-programmer.
+APPID provided by openweather.
+```buildoutcfg
+export APPID=<appid_provided_by_openweather>
+```
 
-You should use python and whatever framework and/or libraries you feel most
-comfortable with.
+One could also configure the environment the app is deployed on. there are two enviroment configurations.  
+ * DEV (Debug mode turned on)
+ * PROD
+```buildoutcfg
+export ENV=<DEV or PROD>
+```
 
-Please do not make your solution publicly available, just compress this folder
-and send it back to us.
+Run the container
+```buildoutcfg
+docker run -d -e APPID=$APPID -p 8080:8080 --name <container_name> <tag_name>
+```
 
-Introduction
-------------
+## Routes  
+### /ping  - /ping/
+#### GET
+Testing route  
+Response:  
+```buildoutcfg
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 73
+Server: Werkzeug/0.14.1 Python/3.7.1
+Date: Tue, 04 Dec 2018 10:33:06 GMT
 
-We want you to write an HTTP service which provides an API to get a weather
-forecast for a given city.
-
-You should use the [openweathermap](https://www.openweathermap.org) API as
-your data source. The API requires an API key that can be obtained for free
-after [signing up](https://home.openweathermap.org/users/sign_up) (if you have
-any problems obtaining an API key, contact us and we will provide one)
-
-Getting it running
-------------------
-
-**Please fill this section out, imagine we are starting with a brand new
-installation of ubuntu 18.04 and we know nothing about your implementation**
-
-The Service
------------
-
-We would like to make the following calls against this web service using 
-[curl](https://curl.haxx.se/)
-
-The submitted result will be put through automated testing to verify the API
-is working as expected.
-
-### `/ping`
-
-This is a simple health check that we can use to determine that the service is
-running, and provides information about the application. The `"version"`
-attribute in the response should match the version number in the `VERSION`
-file.
-
-```bash
-$ curl -si http://localhost:8080/ping
-
-HTTP/1.1 200 OK
-Content-Type: application/json; charset=utf-8
 {
-  "name": "weatherservice",
-  "status": "ok",
+  "name": "weatherservice", 
+  "status": "ok", 
   "version": "1.0.0"
 }
+
 ```
+#### /forecast/``<city>`` - /forecast/``<city>``/  
+####  GET  
+Response: 
+```buildoutcfg
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 113
+Server: Werkzeug/0.14.1 Python/3.7.1
+Date: Tue, 04 Dec 2018 10:38:35 GMT
 
-### `/forecast/<city>`
-
-This endpoint allows a user to request a breakdown of the current weather for
-a specific city. The response should include a description of the cloud cover,
-the humidity as a percentage, the pressure in hecto Pascals (hPa), and
-temperature in Celsius.
-
-For example fetching the weather data for London should look like this:
-
-```bash
-$ curl -si http://localhost:8080/forecast/london/
-
-HTTP/1.1 200 OK
-Content-Type: application/json; charset=utf-8
 {
-    "clouds": "broken clouds",
-    "humidity": "66.6%",
-    "pressure": "1027.51 hPa",
-    "temperature": "14.4C"
-}
-```
-
-The endpoint should also take an `at` query string parameter that will
-return the weather forecast for a specific date or datetime. The `at`
-parameter should accept both date and datetime stamps in the [ISO
-8601](https://en.wikipedia.org/wiki/ISO_8601) format. Ensure that your service
-respects time zone offsets.
-
-```bash
-$ curl -si http://localhost:8080/forecast/london/?at=2018-10-14T14:34:40+0100
-
-HTTP/1.1 200 OK
-Content-Type: application/json; charset=utf-8
-{
-    "clouds": "sunny",
-    "humidity": "12.34%",
-    "pressure": "1000.51 hPa",
-    "temperature": "34.4C"
+  "clouds": string, 
+  "humidity": string, 
+  "pressure": string, 
+  "temperature": string
 }
 
-$ curl -si http://localhost:8080/forecast/london/?at=2018-10-14
-
-HTTP/1.1 200 OK
-Content-Type: application/json; charset=utf-8
-{
-    "clouds": "overcast",
-    "humidity": "20.6%",
-    "pressure": "1014.51 hPa",
-    "temperature": "28.0C"
-}
 ```
 
-### Errors
+Query parameters:  
+In case the "at" parameter is present forecast data is returned otherwise  
+the current weather data.
+ * at (optional)  
+ Date following ISO8601 format  
+ * units (optional)  
+ Can be one of: 
+    * metric  
+    * imperial  
+    * default
 
-When no data is found or the endpoint is invalid the service should respond
-with `404` status code and an appropriate message:
+Errors
+ * 400 - Invalid date (format, past date or future date beyond the maximum 5 day limit)
+ ```buildoutcfg
+HTTP/1.0 400 BAD REQUEST
+Content-Type: application/json
+Content-Length: 96
+Server: Werkzeug/0.14.1 Python/3.7.1
+Date: Tue, 04 Dec 2018 11:00:29 GMT
 
-```bash
-$ curl -si http://localhost:8080/forecast/westeros
-
-HTTP/1.1 404 Not Found
-Content-Type: application/json; charset=utf-8
 {
-    "error": "Cannot find country 'westeros'",
-    "error_code": "country_not_found"
+  "error": "Invalid date format!", 
+  "error_code": "invalid date"
+}
+
+```
+Or:  
+```buildoutcfg
+{
+  "error": "Date in the past!", 
+  "error_code": "invalid date"
+}
+
+```
+Or:  
+```buildoutcfg
+{
+  "error": "Maximum forecast can be 5 days in the future!", 
+  "error_code": "invalid date"
+}
+
+```
+ * 404 - Invalid city name  
+ ```buildoutcfg
+HTTP/1.0 404 NOT FOUND
+Content-Type: application/json
+Content-Length: 81
+Server: Werkzeug/0.14.1 Python/3.7.1
+Date: Tue, 04 Dec 2018 11:08:12 GMT
+
+{
+  "error": "Cannot find city 'city_name'", 
+  "error_code": "city_not_found"
 }
 ```
+ * 500 - Server Error  
+ ```buildoutcfg
+HTTP/1.0 500 INTERNAL SERVER ERROR
+Content-Type: application/json
+Content-Length: 80
+Server: Werkzeug/0.14.1 Python/3.7.1
+Date: Tue, 04 Dec 2018 10:37:02 GMT
 
-Similarly invalid requests should return a `400` status code:
-
-```bash
-$ curl -si http://localhost:8080/forecast/london?at=1938-12-25
-
-HTTP/1.1 400 Bad Request
-Content-Type: application/json; charset=utf-8
 {
-    "error": "Date is in the past",
-    "error_code": "invalid date"
+  "error": "Something went wrong", 
+  "error_code": "internal_server_error"
 }
+
 ```
-
-If anything else goes wrong the service should response with a `500` status code
-and a message that doesn't leak any information about the service internals:
-
-```bash
-$ curl -si http://localhost:8080/forecast/london
-
-HTTP/1.1 500 Internal Server Error
-Content-Type: application/json; charset=utf-8
-{
-    "error": "Something went wrong",
-    "error_code": "internal_server_error"
-}
+## Tests  
+A test script is provided testing the routes and their responce codes. 
+```buildoutcfg
+python route_test.py
+python function_test.py
 ```
-
-Things that we would like to see
---------------------------------
-
-* Tests! We believe that code without tests is bad code, please include any
-  instructions and/or dependencies that we will need in order to run your
-  tests.
-* No sensitive data (such as your API key) should included in your code, your
-  service should read sensitive information from the environment at run time
-  (please include this information in your set up documentation).
-* We work with [git](https://git-scm.com/) for version control, please include
-  your `.git` folder when you compress this folder and send it back to us. You
-  should feel free to commit at any point in the process.
-
-Stretch Goals
--------------
-
-If you have time or want to go the extra mile then try implementing the
-following features:
-
-* Configurable units for temperature (Fahrenheit, Kelvins, etc) and Pressure
-  (bars, atmospheres, tor, etc) via query string parameters.
-* Secure your service with basic auth using the user `admin` and the
-  password `secret`.
-* Cache responses for a short period of time in order to avoid making
-  unnecessary requests to the 3rd party API.
-* Create a working [docker](https://www.docker.com/) container and include the
-  `Dockerfile` along with your service.
-* Run the service somewhere on the internet and give us a link. Bonus points
-  for including your deployment configuration and/or documentation.
